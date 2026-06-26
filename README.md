@@ -1,7 +1,7 @@
 # Flowboard — Drag-and-Drop Task Board
 
 🔗[Live Demo](https://arundhathi2425.github.io/Flowboard/)
-![Flowboard screenshot](screenshot.png) 
+![Flowboard screenshot](flowboard.png) 
 
 A Trello/Kanban-style task manager. Add tasks, drag them between **To Do →
 In Progress → Done**, filter by priority or search, and everything persists
