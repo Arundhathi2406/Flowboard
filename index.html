@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flowboard — Task Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #eef0f4;
+    --surface: #ffffff;
+    --surface-2: #f5f6f9;
+    --border: #e0e3e9;
+    --text: #1f2430;
+    --text-muted: #767e8c;
+    --accent: #4c3cc9;     /* indigo - primary action */
+    --accent-soft: #ece9fb;
+    --high: #ff7a59;       /* coral */
+    --medium: #f2b84b;     /* amber */
+    --low: #3fab85;        /* sage */
+    --danger: #e25b5b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Sora',sans-serif; margin:0;}
+
+  .app{max-width:1280px; margin:0 auto; padding:32px 28px 60px;}
+
+  /* ---------- topbar ---------- */
+  .topbar{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    gap:20px; flex-wrap:wrap; margin-bottom:22px;
+  }
+  .brand .eyebrow{
+    font-size:11px; letter-spacing:0.09em; text-transform:uppercase;
+    color:var(--accent); font-weight:600; margin-bottom:6px;
+  }
+  .brand h1{font-size:28px; font-weight:700;}
+  .brand p{margin:4px 0 0; color:var(--text-muted); font-size:13px;}
+
+  .toolbar{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .search-input{
+    padding:10px 14px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface); font-size:13px; font-family:'Inter',sans-serif;
+    min-width:200px; color:var(--text);
+  }
+  .search-input:focus{outline:2px solid var(--accent-soft); border-color:var(--accent);}
+  .chip-group{display:flex; gap:6px;}
+  .chip{
+    padding:8px 13px; border-radius:20px; border:1px solid var(--border);
+    background:var(--surface); font-size:12px; color:var(--text-muted);
+    cursor:pointer; font-weight:500; transition:all .12s;
+  }
+  .chip.active{background:var(--accent); color:white; border-color:var(--accent);}
+  .chip:hover:not(.active){border-color:var(--accent);}
+
+  .btn{
+    border:none; border-radius:8px; padding:10px 16px; font-size:13px;
+    font-weight:600; cursor:pointer; font-family:'Inter',sans-serif;
+  }
+  .btn-primary{background:var(--accent); color:white;}
+  .btn-primary:hover{background:#3f31ab;}
+  .btn-ghost{background:transparent; color:var(--text-muted); border:1px solid var(--border);}
+  .btn-ghost:hover{color:var(--text); border-color:var(--text-muted);}
+
+  /* ---------- progress ---------- */
+  .progress-wrap{margin-bottom:26px;}
+  .progress-label{font-size:12px; color:var(--text-muted); margin-bottom:8px; display:flex; justify-content:space-between;}
+  .progress-label span.pct{color:var(--accent); font-weight:600;}
+  .progress-track{height:8px; background:var(--surface-2); border-radius:6px; overflow:hidden; border:1px solid var(--border);}
+  .progress-fill{height:100%; background:linear-gradient(90deg, var(--accent), #7c6ef0); border-radius:6px; transition:width .3s ease;}
+
+  .filter-note{font-size:11px; color:var(--text-muted); margin-top:8px; display:none;}
+  .filter-note.visible{display:block;}
+
+  /* ---------- board ---------- */
+  .board{display:grid; grid-template-columns:repeat(4, 1fr); gap:18px; align-items:start;}
+  .column{background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:14px; min-height:120px;}
+  .column.drag-over{background:var(--accent-soft);}
+  .column-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:0 4px;}
+  .column-head h3{font-size:14px; font-weight:600;}
+  .count-chip{
+    font-size:11px; background:var(--surface); border:1px solid var(--border); color:var(--text-muted);
+    padding:2px 8px; border-radius:10px; font-weight:600;
+  }
+  .card-list{display:flex; flex-direction:column; gap:10px; min-height:40px;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:13px 13px 11px; cursor:grab; transition:transform .12s, box-shadow .12s;
+  }
+  .card:hover{box-shadow:0 2px 10px rgba(31,36,48,0.06);}
+  .card.dragging{opacity:0.4; transform:rotate(1.5deg);}
+  .card[draggable="false"]{cursor:default;}
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;}
+  .card-title{font-size:13.5px; font-weight:600; line-height:1.4;}
+  .card-desc{font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:8px;}
+  .card-meta{display:flex; justify-content:space-between; align-items:center;}
+  .badge{
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.03em;
+    padding:3px 7px; border-radius:5px; color:white; white-space:nowrap;
+  }
+  .due{font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px;}
+  .due.overdue{color:var(--danger); font-weight:600;}
+  .card-actions{display:flex; gap:6px;}
+  .icon-btn{
+    background:none; border:none; cursor:pointer; padding:3px; color:var(--text-muted);
+    border-radius:5px; display:flex; align-items:center;
+  }
+  .icon-btn:hover{background:var(--surface-2); color:var(--text);}
+  .icon-btn svg{width:14px; height:14px;}
+
+  .add-card-btn{
+    width:100%; padding:9px; border-radius:8px; border:1px dashed var(--border);
+    background:transparent; color:var(--text-muted); font-size:12.5px; cursor:pointer;
+    margin-top:4px; font-family:'Inter',sans-serif; font-weight:500;
+  }
+  .add-card-btn:hover{border-color:var(--accent); color:var(--accent);}
+
+  .empty-col{font-size:12px; color:var(--text-muted); text-align:center; padding:16px 4px;}
+
+  /* ---------- modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(31,36,48,0.4);
+    display:none; align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--surface); border-radius:14px; padding:24px; width:100%; max-width:420px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.2);
+  }
+  .modal h3{font-size:17px; margin-bottom:16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--text-muted); margin-bottom:6px; font-weight:500;}
+  .field input, .field textarea, .field select{
+    width:100%; padding:9px 11px; border-radius:7px; border:1px solid var(--border);
+    font-family:'Inter',sans-serif; font-size:13px; color:var(--text); background:var(--surface);
+  }
+  .field textarea{resize:vertical; min-height:60px;}
+  .field input:focus, .field textarea:focus, .field select:focus{outline:2px solid var(--accent-soft); border-color:var(--accent);}
+  .form-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+
+  footer{text-align:center; color:var(--text-muted); font-size:11px; margin-top:36px;}
+
+  @media (max-width:900px){
+    .board{grid-template-columns:1fr;}
+    .topbar{align-items:flex-start;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .card{transition:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="eyebrow">Task Management</div>
+      <h1>Flowboard</h1>
+      <p>Drag tasks across columns to track progress. Everything saves automatically in your browser.</p>
+    </div>
+    <div class="toolbar">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search tasks...">
+      <div class="chip-group" id="priorityChips">
+        <div class="chip active" data-priority="all">All</div>
+        <div class="chip" data-priority="high">High</div>
+        <div class="chip" data-priority="medium">Medium</div>
+        <div class="chip" data-priority="low">Low</div>
+      </div>
+      <button class="btn btn-primary" id="newTaskBtn">+ New task</button>
+      <button class="btn btn-ghost" id="resetBtn">Reset demo</button>
+    </div>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span id="progressText">0 of 0 tasks done</span>
+      <span class="pct" id="progressPct">0%</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="filter-note" id="filterNote">Drag-and-drop reordering is paused while a search or filter is active — clear it to rearrange tasks.</div>
+  </div>
+
+  <main class="board" id="board"></main>
+
+  <footer>FLOWBOARD · DATA IS STORED ONLY IN THIS BROWSER (LOCALSTORAGE)</footer>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">New task</h3>
+    <form id="taskForm">
+      <div class="field">
+        <label for="fieldTitle">Title</label>
+        <input id="fieldTitle" required maxlength="80" placeholder="e.g. Finish DSA assignment">
+      </div>
+      <div class="field">
+        <label for="fieldDesc">Description</label>
+        <textarea id="fieldDesc" maxlength="240" placeholder="Optional details..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="fieldPriority">Priority</label>
+          <select id="fieldPriority">
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fieldDue">Due date</label>
+          <input type="date" id="fieldDue">
+        </div>
+      </div>
+      <div class="field">
+        <label for="fieldColumn">Column</label>
+        <select id="fieldColumn">
+          <option value="todo">To Do</option>
+          <option value="inprogress">In Progress</option>
+          <option value="review">Review</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveBtn">Save task</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* ===================== CONSTANTS ===================== */
+const STORAGE_KEY = 'flowboard_tasks_v1';
+const COLUMNS = [
+  {key:'todo', label:'To Do'},
+  {key:'inprogress', label:'In Progress'},
+  {key:'review', label:'Review'},
+  {key:'done', label:'Done'},
+];
+const PRIORITY_COLORS = {high:'var(--high)', medium:'var(--medium)', low:'var(--low)'};
+
+const ICON_EDIT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
+const ICON_DELETE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>`;
+const ICON_CLOCK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`;
+
+function sampleTasks(){
+  const today = new Date();
+  const inDays = n => { const d = new Date(today); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+  return [
+    {id:cryptoId(), title:'Welcome to Flowboard 👋', description:'Drag this card to "In Progress" to see how the board works.', priority:'medium', dueDate:'', column:'todo'},
+    {id:cryptoId(), title:'Finish DSA practice set', description:'Arrays + basic loops, 10 problems.', priority:'high', dueDate:inDays(2), column:'todo'},
+    {id:cryptoId(), title:'Draft project README', description:'', priority:'low', dueDate:'', column:'inprogress'},
+    {id:cryptoId(), title:'Set up GitHub repo', description:'Initialize repo with a clean commit history.', priority:'medium', dueDate:inDays(-1), column:'done'},
+  ];
+}
+function cryptoId(){ return 't_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); }
+
+/* ===================== STATE ===================== */
+let tasks = loadTasks();
+let searchTerm = '';
+let priorityFilter = 'all';
+let editingId = null;
+let pendingColumn = 'todo';
+
+function loadTasks(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ console.warn('Could not read saved tasks, starting fresh.', e); }
+  const seed = sampleTasks();
+  saveTasks(seed);
+  return seed;
+}
+function saveTasks(list = tasks){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+  catch(e){ console.warn('Could not save tasks.', e); }
+}
+
+/* ===================== FILTER HELPERS ===================== */
+function isFiltered(){ return searchTerm.trim() !== '' || priorityFilter !== 'all'; }
+
+function visibleTasks(){
+  return tasks.filter(t=>{
+    if(priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
+    if(searchTerm.trim() !== ''){
+      const q = searchTerm.toLowerCase();
+      if(!t.title.toLowerCase().includes(q) && !t.description.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+/* ===================== RENDER ===================== */
+function fmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString(undefined, {month:'short', day:'numeric'});
+}
+function isOverdue(task){
+  if(!task.dueDate || task.column === 'done') return false;
+  return new Date(task.dueDate + 'T00:00:00') < new Date(new Date().toDateString());
+}
+
+function renderBoard(){
+  const board = document.getElementById('board');
+  const filtered = isFiltered();
+  const shown = visibleTasks();
+
+  board.innerHTML = '';
+  COLUMNS.forEach(col=>{
+    const colTasks = shown.filter(t=>t.column===col.key);
+    const columnEl = document.createElement('div');
+    columnEl.className = 'column';
+    columnEl.dataset.col = col.key;
+
+    const head = document.createElement('div');
+    head.className = 'column-head';
+    head.innerHTML = `<h3>${col.label}</h3><span class="count-chip">${colTasks.length}</span>`;
+    columnEl.appendChild(head);
+
+    const list = document.createElement('div');
+    list.className = 'card-list';
+    list.dataset.col = col.key;
+
+    if(colTasks.length === 0){
+      list.innerHTML = `<div class="empty-col">No tasks${filtered ? ' match your filters' : ' yet'}.</div>`;
+    } else {
+      colTasks.forEach(t => list.appendChild(buildCard(t, filtered)));
+    }
+    columnEl.appendChild(list);
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-card-btn';
+    addBtn.textContent = '+ Add task';
+    addBtn.addEventListener('click', ()=> openModal('add', col.key));
+    columnEl.appendChild(addBtn);
+
+    if(!filtered){
+      list.addEventListener('dragover', onDragOver);
+      list.addEventListener('drop', onDrop);
+      list.addEventListener('dragleave', ()=> columnEl.classList.remove('drag-over'));
+    }
+
+    board.appendChild(columnEl);
+  });
+
+  document.getElementById('filterNote').classList.toggle('visible', filtered);
+  renderProgress();
+}
+
+function buildCard(task, filtered){
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.dataset.id = task.id;
+  card.draggable = !filtered;
+
+  const overdue = isOverdue(task);
+  card.innerHTML = `
+    <div class="card-top">
+      <div class="card-title">${escapeHtml(task.title)}</div>
+      <div class="card-actions">
+        <button class="icon-btn" data-action="edit" title="Edit">${ICON_EDIT}</button>
+        <button class="icon-btn" data-action="delete" title="Delete">${ICON_DELETE}</button>
+      </div>
+    </div>
+    ${task.description ? `<div class="card-desc">${escapeHtml(task.description)}</div>` : ''}
+    <div class="card-meta">
+      <span class="badge" style="background:${PRIORITY_COLORS[task.priority]}">${task.priority}</span>
+      ${task.dueDate ? `<span class="due ${overdue?'overdue':''}">${ICON_CLOCK} ${fmtDate(task.dueDate)}</span>` : '<span></span>'}
+    </div>`;
+
+  card.querySelector('[data-action="edit"]').addEventListener('click', e=>{ e.stopPropagation(); openModal('edit', task.column, task.id); });
+  card.querySelector('[data-action="delete"]').addEventListener('click', e=>{ e.stopPropagation(); deleteTask(task.id); });
+
+  card.addEventListener('dragstart', ()=>{ card.classList.add('dragging'); });
+  card.addEventListener('dragend', ()=>{ card.classList.remove('dragging'); syncTasksFromDOM(); });
+
+  return card;
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderProgress(){
+  const total = tasks.length;
+  const done = tasks.filter(t=>t.column==='done').length;
+  const pct = total === 0 ? 0 : Math.round((done/total)*100);
+  document.getElementById('progressText').textContent = `${done} of ${total} task${total!==1?'s':''} done`;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+/* ===================== DRAG & DROP ===================== */
+function onDragOver(e){
+  e.preventDefault();
+  const list = e.currentTarget;
+  list.closest('.column').classList.add('drag-over');
+  const dragging = document.querySelector('.card.dragging');
+  if(!dragging) return;
+  const after = getDragAfterElement(list, e.clientY);
+  if(after == null) list.appendChild(dragging);
+  else list.insertBefore(dragging, after);
+}
+function onDrop(e){
+  e.preventDefault();
+  e.currentTarget.closest('.column').classList.remove('drag-over');
+}
+function getDragAfterElement(container, y){
+  const cards = [...container.querySelectorAll('.card:not(.dragging)')];
+  return cards.reduce((closest, child)=>{
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height/2;
+    if(offset < 0 && offset > closest.offset) return {offset, element:child};
+    return closest;
+  }, {offset:-Infinity, element:null}).element;
+}
+function syncTasksFromDOM(){
+  const newTasks = [];
+  document.querySelectorAll('.card-list').forEach(list=>{
+    const col = list.dataset.col;
+    list.querySelectorAll('.card').forEach(cardEl=>{
+      const task = tasks.find(t=>t.id===cardEl.dataset.id);
+      if(task){ task.column = col; newTasks.push(task); }
+    });
+  });
+  // keep any tasks not currently in DOM (shouldn't happen when unfiltered, but stay safe)
+  tasks.forEach(t=>{ if(!newTasks.includes(t)) newTasks.push(t); });
+  tasks = newTasks;
+  saveTasks();
+  renderBoard();
+}
+
+/* ===================== CRUD ===================== */
+function deleteTask(id){
+  if(!confirm('Delete this task?')) return;
+  tasks = tasks.filter(t=>t.id!==id);
+  saveTasks();
+  renderBoard();
+}
+
+function openModal(mode, columnKey, taskId=null){
+  editingId = mode === 'edit' ? taskId : null;
+  pendingColumn = columnKey;
+  document.getElementById('modalTitle').textContent = mode === 'edit' ? 'Edit task' : 'New task';
+
+  if(mode === 'edit'){
+    const t = tasks.find(t=>t.id===taskId);
+    document.getElementById('fieldTitle').value = t.title;
+    document.getElementById('fieldDesc').value = t.description;
+    document.getElementById('fieldPriority').value = t.priority;
+    document.getElementById('fieldDue').value = t.dueDate;
+    document.getElementById('fieldColumn').value = t.column;
+  } else {
+    document.getElementById('taskForm').reset();
+    document.getElementById('fieldColumn').value = columnKey;
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('fieldTitle').focus();
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+document.getElementById('taskForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const data = {
+    title: document.getElementById('fieldTitle').value.trim(),
+    description: document.getElementById('fieldDesc').value.trim(),
+    priority: document.getElementById('fieldPriority').value,
+    dueDate: document.getElementById('fieldDue').value,
+    column: document.getElementById('fieldColumn').value,
+  };
+  if(!data.title) return;
+
+  if(editingId){
+    const t = tasks.find(t=>t.id===editingId);
+    Object.assign(t, data);
+  } else {
+    tasks.push({id:cryptoId(), ...data});
+  }
+  saveTasks();
+  closeModal();
+  renderBoard();
+});
+
+document.getElementById('newTaskBtn').addEventListener('click', ()=> openModal('add', 'todo'));
+document.getElementById('cancelBtn').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', e=>{ if(e.target.id==='modalOverlay') closeModal(); });
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(!confirm('Reset the board back to the demo tasks? This clears your current tasks.')) return;
+  tasks = sampleTasks();
+  saveTasks();
+  renderBoard();
+});
+
+document.getElementById('searchInput').addEventListener('input', e=>{
+  searchTerm = e.target.value;
+  renderBoard();
+});
+
+document.getElementById('priorityChips').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip');
+  if(!chip) return;
+  document.querySelectorAll('#priorityChips .chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  priorityFilter = chip.dataset.priority;
+  renderBoard();
+});
+
+/* ===================== INIT ===================== */
+renderBoard();
+</script>
+</body>
+</html>
